@@ -42,7 +42,7 @@ class HTTPSConnectionV1(httplib.HTTPSConnection):
     def connect(self):
         sock = socket.create_connection((self.host, self.port), self.timeout)
         self.sock = ssl.wrap_socket(sock, self.key_file, self.cert_file, ssl_version=ssl.PROTOCOL_TLSv1)
-        
+
 class HTTPSHandlerV1(urllib2.HTTPSHandler):
     def https_open(self, req):
         return self.do_open(HTTPSConnectionV1, req)
@@ -98,11 +98,13 @@ class Nest:
 
         self.status = res
 
-        print "res.keys", res.keys()
-        print "res[structure][structure_id].keys", res["structure"][self.structure_id].keys()
-        print "res[device].keys", res["device"].keys()
-        print "res[device][serial].keys", res["device"][self.serial].keys()
-        print "res[shared][serial].keys", res["shared"][self.serial].keys()
+        #print "res.keys", res.keys()
+        #print "res[structure][structure_id].keys", res["structure"][self.structure_id].keys()
+        #print "res[device].keys", res["device"].keys()
+
+        self.all_serials = res["device"].keys()
+
+        #print "res[shared][serial].keys", res["shared"][self.serial].keys()
 
     def temp_in(self, temp):
         if (self.units == "F"):
@@ -117,14 +119,17 @@ class Nest:
             return temp
 
     def show_status(self):
-        shared = self.status["shared"][self.serial]
-        device = self.status["device"][self.serial]
 
-        allvars = shared
-        allvars.update(device)
+        for serial in self.all_serials:
+          shared = self.status["shared"][serial]
+          device = self.status["device"][serial]
 
-        for k in sorted(allvars.keys()):
-             print k + "."*(32-len(k)) + ":", allvars[k]
+          allvars = shared
+          allvars.update(device)
+
+          print "Data for device: %s" % serial
+          for k in sorted(allvars.keys()):
+               print k + "."*(32-len(k)) + ":", allvars[k]
 
     def show_curtemp(self):
         temp = self.status["shared"][self.serial]["current_temperature"]
