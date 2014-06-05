@@ -21,6 +21,9 @@ import urllib
 import urllib2
 import sys
 import ssl
+import pymongo
+from pymongo import MongoClient
+from stathat import StatHat
 import httplib, socket
 from optparse import OptionParser
 
@@ -101,10 +104,9 @@ class Nest:
         #print "res.keys", res.keys()
         #print "res[structure][structure_id].keys", res["structure"][self.structure_id].keys()
         #print "res[device].keys", res["device"].keys()
+        #print "res[shared][serial].keys", res["shared"][self.serial].keys()
 
         self.all_serials = res["device"].keys()
-
-        #print "res[shared][serial].keys", res["shared"][self.serial].keys()
 
     def temp_in(self, temp):
         if (self.units == "F"):
@@ -121,15 +123,31 @@ class Nest:
     def show_status(self):
 
         for serial in self.all_serials:
-          shared = self.status["shared"][serial]
-          device = self.status["device"][serial]
+            shared = self.status["shared"][serial]
+            device = self.status["device"][serial]
 
-          allvars = shared
-          allvars.update(device)
+            allvars = shared
+            allvars.update(device)
 
-          print "Data for device: %s" % serial
-          for k in sorted(allvars.keys()):
-               print k + "."*(32-len(k)) + ":", allvars[k]
+            allvars_parsed = {}
+            print "Data for device: %s" % serial
+            for k in sorted(allvars.keys()):
+                #print k + "."*(32-len(k)) + ":", allvars[k]
+                clean_key = k.replace('$','')
+                allvars_parsed[clean_key] = allvars[k]
+
+                interested_keys = ['current_temperature', 'target_temperature']
+
+                # post single stat to stathat
+                if clean_key in interested_keys:
+                    stathat = StatHat()
+                    namespace = serial+'-'+allvars['name']+':'+clean_key
+                    out = stathat.ez_post_value('kgorman@objectrocket.com', namespace, allvars[k])
+                    print out
+
+            # save in MongoDB
+            self.save_mongo(allvars_parsed)
+
 
     def show_curtemp(self):
         temp = self.status["shared"][self.serial]["current_temperature"]
@@ -162,6 +180,17 @@ class Nest:
         res = urllib2.urlopen(req).read()
 
         print res
+
+    def save_mongo(self, document):
+      host = 'iad-mongos0.objectrocket.com'
+      port = 15136
+      db = 'nest'
+      mongo_username = 'kg'
+      mongo_password = 'kg'
+      self.connection = MongoClient(host, port)
+      self.database = self.connection[db]
+      self.database.authenticate(mongo_username, mongo_password)
+      self.database['nest_data'].save(document)
 
 def create_parser():
    parser = OptionParser(usage="nest [options] command [command_options] [command_args]",
