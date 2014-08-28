@@ -21,9 +21,6 @@ import urllib
 import urllib2
 import sys
 import ssl
-import pymongo
-from pymongo import MongoClient
-from stathat import StatHat
 import httplib, socket
 from optparse import OptionParser
 
@@ -138,16 +135,8 @@ class Nest:
 
                 interested_keys = ['current_temperature', 'target_temperature']
 
-                # post single stat to stathat
-                if clean_key in interested_keys:
-                    stathat = StatHat()
-                    namespace = serial+'-'+allvars['name']+':'+clean_key
-                    out = stathat.ez_post_value('kgorman@objectrocket.com', namespace, allvars[k])
-                    print out
-
-            # save in MongoDB
-            self.save_mongo(allvars_parsed)
-
+            print allvars_parsed
+            return allvars_parsed
 
     def show_curtemp(self):
         temp = self.status["shared"][self.serial]["current_temperature"]
@@ -180,17 +169,6 @@ class Nest:
         res = urllib2.urlopen(req).read()
 
         print res
-
-    def save_mongo(self, document):
-      host = 'iad-mongos0.objectrocket.com'
-      port = 15136
-      db = 'nest'
-      mongo_username = 'kg'
-      mongo_password = 'kg'
-      self.connection = MongoClient(host, port)
-      self.database = self.connection[db]
-      self.database.authenticate(mongo_username, mongo_password)
-      self.database['nest_data'].save(document)
 
 def create_parser():
    parser = OptionParser(usage="nest [options] command [command_options] [command_args]",
@@ -281,8 +259,3 @@ def main():
 
 if __name__=="__main__":
    main()
-
-
-
-
-
