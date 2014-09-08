@@ -1,6 +1,5 @@
 import pymongo
 from pymongo import MongoClient
-from stathat import StatHat
 
 class Database:
     def __init__(self, db_username, db_password, db_name, db_host, db_port, db_table):
